@@ -1,0 +1,261 @@
+---
+title: "Ch1: General Background in R"
+author: "Johnson Hsieh"
+date: "2015-01-31"
+output: html_document
+---
+  
+## 1. R 物件與索引技術介紹
+### 1.1. 變數的賦值與基本型態
+R 語言中變數的賦值方式有兩種，1. <- (箭號) 以及 2. = (等號)，根據 [Google's R Style Guide](https://google-styleguide.googlecode.com/svn/trunk/Rguide.xml) 建議使用 <- 進行變數賦值。另外，R 語言中程式的註解以 # (井號) 表示。
+
+R 物件最基本的單位是向量 (vector)，以 c() 表示 (c 取自combine之意)，元素以逗號分隔。其中向量包含三種基本類別(class)，即 1.數值向量 (numeric vector)、2. 字串向量 (character vector) 以及 3. 布林向量 (logical vector)。
+```{r comment=""}
+# numeric vector
+x <- c(4.39, 2.11, 3.17)
+x 
+class(x) # 可利用class(x)查詢物件的類別
+
+# character vector，以雙引號 " " 或單引號 ' ' 註記 
+y <- c("apple", "book", "cat")
+y
+class(y)
+
+# logical vector，以TRUE / FALSE 註記，亦可簡化為 T / F
+z <- c(TRUE, FALSE, TRUE)
+z
+class(z)
+```
+
+### 1.2. 向量的類別轉換
+向量物件一次只能接受一種類別，若同時在一個向量中給定多種類別，R 將會依以下順序進行自動轉換：字串 > 數值 > 布林。也可以利用以下函數自行轉換向量的類別：as.character, as.numeric, as.logical。
+```{r comment=""}
+# 向量只容許一種類別 (字串 > 數值 > 布林)
+c(1, 2, "three") # 數值被轉換成字串
+c(1, 2, TRUE, FALSE) # 布林值 TRUE 被轉換成1，FALSE被轉換成0
+c(1.1, 2.4, TRUE, FALSE)
+c("one", 2.4, TRUE) # 所有元素都被轉換成字串
+
+# 字串轉數字
+a1 <- c("89", "91", "102")
+as.numeric(a1)
+
+# 布林轉數字
+a2 <- c(TRUE, TRUE, FALSE)
+as.numeric(a2)
+
+# 數字轉布林
+a3 <- c(-2, -1, 0, 1, 2)
+as.logical(a3)
+
+# 數字轉字串
+as.character(a3)
+```
+
+### 1.3. 向量物件的簡記與recycling properties
+連續整數向量可以利用 : (冒號) 簡記，譬如數列1, 2, 3 在 R 語言中可利用 1:3 簡記。R 中的向量具有 recycling properties，便於執行四則運算。
+```{r comment=""}
+# basic expression of integer vector
+c(1, 2, 3)
+
+# simple expression
+1:3
+3:1
+
+# shorter arguments are recycled
+1:3 * 2
+1:4 + 1:2
+c(0.5, 1.5, 2.5, 3.5) * c(2, 1)
+
+# warning (why?)
+1:3 * 1:2
+```
+
+### 1.4. 向量元素的命名
+在 R 語言中，可以對向量中的每一個元素命名，或者是利用函數 names 對向量元素命名，這有助於該向量的理解。
+```{r comment=""}
+y <- c("apple", "book", "cat")
+y
+y1 <- c(A="apple", B="book", C="cat")
+# 等價於 
+# y1 <- y
+# names(y1) <- c("A", "B", "C")
+y1
+names(y1)
+```
+
+### 1.5. 向量的取值與排序
+利用[ ] (中括號) 與比較運算子(>, <, >=, <=, ==, !=)、邏輯運算子 (&, |) 以及負號 (-) 進行向量的取值。此外，R也支援利用變數的名稱 (names) 來取值。
+
+```{r comment=""}
+# 1st and 3rd elements of vector
+x <- c(4.39, 2.11, 3.17)
+x[c(1,3)] 
+x[c(2,3,1)]
+order(x) # 依x各元素大小排序 (由小到大)
+x[order(x)]
+
+# remove 1st elements of vector
+y <- c("apple", "book", "cat")
+y[c(-1)]
+
+# using comparison and logical operators
+x > 3
+which(x>3) # which indices are TRUE
+x[which(x>3)]
+x[x > 3] # simplify expression
+
+y[y!="apple"]
+
+y1["A"]
+y1[y1=="apple"]
+names(y1)[y1 == "apple"]
+```
+
+### 1.6. 向量元素取代與新增
+利用[ ]進行元素的取代與新增
+```{r comment=""}
+y <- c("apple", "book", "cat")
+y[3] <- "car" # replace 3rd element
+y
+
+x <- c(4.39, 2.11, 3.17)
+x[c(1,3)] <- 0 # replace 1st and 3rd elements to 1
+x[4] <- 1.19 # add 4th element to 1.19
+# 等價於 c(x, 1.19)
+x
+```
+
+### 1.7.  data.frame 物件簡介
+資料表 (data.frame) 是向量 (vector) 的一種推廣，它可以將多個相同長度 (不一定是相同類別) 的向量合併在一起 (combine by column)。可以利用
+```{r comment=""}
+x <- c(4.39, 2.11, 3.17)
+y <- c("apple", "book", "cat")
+z <- c(TRUE, FALSE, TRUE)
+df <- data.frame(v1 = x, v2 = y, v3 = z)
+df
+str(df) # 展示物件各欄位的屬性結構 (structure)
+head(df) # 展示物件前6筆資料
+colnames(df) # 展示物件的欄位名稱
+rownames(df) # 展示物件的列名稱
+```
+
+### 1.8. data.frame的取值
+利用[,] 提取物件內容，基本表達式為x[i, j]，表示x物件中第i列 (ith row)、第j行 (jth column) 的值，也可用x[i, ]表達第i列的向量；x[,j]表達第j行的向量。中括號中可以使用條件算子進行取值。
+另外，可以用 $ (錢號) 來提取物件的特定欄位 (column)，請試著在 df$ 之後按tab (自動完成鍵)。
+
+```{r comment=""}
+df[1] # select 1st column variable
+df[, 1] # select the value of 1st column
+df[, "v1"]
+df$v1
+df[c("v2", "v3")]
+df[2, ] # select 2nd row
+df[df$v1 > 3 & z==TRUE, "v2"]
+```
+
+### 1.9. data.frame的合併
+利用rbind (上下合併)、cbind (左右合併) 對data.frame進行合併
+```{r comment=""}
+x <- data.frame(Drama=c("我的自由年代", "回到愛以前"), 
+                TV=c("三立", "台視"))
+
+y <- data.frame(Drama=c("我的自由年代", "回到愛以前"),
+                Date=c("2014-02-07", "2014-01-05"),
+                Vol=c(12, NA),
+                Rating=c(2.67, 2.58))
+
+z <- data.frame(Drama=c("16個夏天", "妹妹"), 
+                TV=c("公視", "台視"),
+                Date=c("2014-11-01", "2014-10-10"),
+                Vol=c(16, 7),
+                Rating=c(2.30, 1.30))
+x
+y
+z
+
+xy <- cbind(x, y[,-1])
+rbind(xy, z)
+# 壓縮程式碼 rbind(cbind(x, y[,-1]),z)
+```
+
+
+## 1.9. factor 物件簡介
+當一向量變數是類別型變數 (categorical data，譬如：性別、教育水準) 時，在R語言中以factor進行定義。
+```{r comment=""}
+# variable gender with 2 "male" entries and 3 "female" entries 
+gender <- c(rep("male",2), rep("female", 3)) 
+gender
+gender <- factor(gender)
+gender
+levels(gender)
+as.numeric(gender) # 1=female, 2=male internally (alphabetically)
+# change vector of labels for the levels
+factor(gender, levels=c("male", "female"), labels=c("M", "F"))
+```
+
+### 1.10. list 物件簡介
+R 環境中最廣義的物件，可以將上述所有物件都包含至同一個物件下。序列 (list) 的表達形式與向量類似，只是每一個元素可以是各種物件型態(vector, data.frame, list, ... )。基本的取值方法是[[ ]] (雙層中括號)，x[[i]]表示list物件中第i個值。如過list物件的位置有命名，則可以用$ (錢號) 來提取物件。
+```{r comment=""}
+L <- list(x = c(1:5), y = c("a", "b", "c"), z = df)
+L
+# teh dollar operator $ or [[]] can be used to retrieve a single element
+L[[2]]
+L$y 
+L[["z"]]
+L[3]
+L[c(1, 3)]
+L[c("x", "y")]
+
+# 序列轉向量
+unlist(L)
+```
+
+### 1.11. 特殊變數介紹
+- NA, not vailable, 通常指遺漏值 (missing value)，可利用 is.na() 函數來判別
+- numeric(0), length(numeric(0) = 0, 長度為0的數值型物件
+- Inf, infinity, 無窮大
+- NaN, not a number, 可利用 is.na() 函數來判別
+```{r comment=""}
+NA # NA
+c(1, NA, 4) + 1
+x <- c(4.39, 2.11, 3.17)
+x[x>5] # numeric(0)
+100/0 # Inf
+-pi/0 #-Inf
+0/0 # NaN
+Inf-Inf # NaN
+```
+
+### 小挑戰
+請利用R的取代與索引技術，將物件 x, y 整理成以下表格
+```{r comment=""}
+text.x <- c("Drama,        TV,   Date,       Vol,  Rating",
+            "我的自由年代,  三立, 2014-02-07, 12,   2.67",
+            "16個夏天,     公視,      11/01, 16,   2.30",
+            "妹妹,         台視, 2014-10-10, 7,    1.30",
+            "回到愛以前,    台視, 2014-01-05, NA,   2.58")
+x <- read.table(text=text.x,  header = TRUE, sep=",", strip.white=TRUE)
+
+text.y <- c("Drama,       TV,   Date,       variable, value",
+            "喜歡.一個人, 三立, 2014-07-04, Vol,      7",
+            "喜歡.一個人, 三立, 2014-07-04, Rating,   2.03",
+            "徵婚啟事,    台視, 2014-11-28, Vol,      4",
+            "徵婚啟事,    台視, 2014-11-28, Rating,   0.96")
+y <- read.table(text=text.y,  header = TRUE, sep=",", strip.white=TRUE)
+
+x
+y
+```
+
+
+ Drama      | TV | Date     |Vol|Rating
+------------|----|----------|---|------
+我的自由年代|三立|2014-02-07|12 |2.67
+回到愛以前  |台視|2014-01-05|NA |2.58
+16個夏天    |公視|2014-11-01|16 |2.30
+喜歡.一個人 |三立|2014-07-04| 7 |2.03
+妹妹        |台視|2014-10-10| 7 |1.30
+徵婚啟事    |台視|2014-11-28| 4 |0.96
+
+
