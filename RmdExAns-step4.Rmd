@@ -1,0 +1,54 @@
+---
+title: ""
+output: html_document
+---
+```{r include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+```
+
+
+```{r echo=FALSE, include=FALSE}
+#dat <- read.csv("data/weather-utf8.csv", fileEncoding="utf8") 
+dat <- read.csv("data/weather-utf8.csv") 
+max(dat[1:2, 4:5])
+min(dat[1:2, 4:5])
+```
+
+# 在地天氣報馬仔
+【東北季風增強天氣轉涼，請適時增添衣物，以免著涼】。
+
+今天（28日）還是受東北季風影響，但是水氣減少，整體而言下雨的現象有機會比昨天少，下雨比較明顯的還是會在北部，目前氣象局已針對基隆北海岸、宜蘭地區及大臺北山區發布大雨特報、建議出門可以攜帶雨具備用；溫度的部分，跟昨天相比，會降１度左右，感受其實跟昨天蠻類似的，預測高溫約**`r max(dat[1:2,4:5])`**度，低溫約**`r min(dat[1:2,4:5])`**度，早晚較為偏冷偏涼，請適時增添衣物避免著涼。
+
+另外，也由於東北風增強，沿海空曠地區及外島容易有８到９級的強陣風出現，海邊活動或海上作業船隻請注意安全。
+
+
+## 台北市１週預報
+```{r results='asis', echo=FALSE, warning=FALSE}
+day1 <- filter(dat, 早晚=="白天")
+day2 <- mutate(day1, 溫度=paste(高溫,低溫,sep="-"))
+day3 <- select(day2, 天氣, 溫度)
+
+night1 <- filter(dat, 早晚=="晚上")
+night2 <- mutate(night1, 溫度=paste(高溫,低溫,sep="-"))
+night3 <- select(night2, 天氣, 溫度)
+
+out <- data.frame(t(bind_cols(day3, night3)))
+colnames(out) <- day1$日期
+rownames(out) <- c("白天天氣","白天溫度","晚上天氣","晚上溫度")
+knitr::kable(out)
+```
+
+
+## 未來7天預報圖
+```{r echo=FALSE}
+dat1 <- mutate(dat, 時間=paste(日期,早晚,sep="\n"))
+dat2 <- select(dat1, 時間, 高溫, 低溫)
+colnames(dat2)[1] <- "時間"
+dat3 <- melt(dat2, id.vars="時間")
+ggplot(dat3, aes(x=時間, y=value, group=variable, colour=variable)) + 
+  geom_line() + 
+  labs(x="時間", y="溫度") +
+  theme_gray(base_family="STHeiti") # 顯示中文字 Mac user only
+```
