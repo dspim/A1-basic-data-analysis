@@ -9,5 +9,5 @@
     + [Clean Data in R](https://dspim.github.io/A1-basic-data-analysis/A1-ETL-2.html)
     + [Read the Charts](https://dspim.github.io/A1-basic-data-analysis/A1-EDA-2-Charts.html)
     + [Inference](https://dspim.github.io/A1-basic-data-analysis/A1-EDA-3-Inference.html)
-    + [Introduction to R markdown](https://dspim.github.io/A1-basic-data-analysis/A1-RMarkdown.html)
+    + [Introduction to R markdown](https://dspim.github.io/A1-basic-data-analysis/A1-RMarkdown.html), [練習](https://dspim.github.io/A1-basic-data-analysis/RMD-example/RmdExQue.html), [解答](https://dspim.github.io/A1-basic-data-analysis/RMD-example/RmdExAns.html)
 - 講師：謝宗震 (Johnson Hsieh)、劉佳欣 (Rafe Liu)、吳齊軒 (Wush Wu)
