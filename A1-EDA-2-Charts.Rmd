@@ -1,0 +1,557 @@
+---
+title: EDA(2) - Read the Charts
+author: Rafe C. H. Liu
+date: Feb 1, 2015 @ DSP
+output:
+  html_document:
+    theme: "spacelab"
+    css: styles.css
+    fig_width: 10
+    fig_height: 7.5
+---
+[Contact me](mailto:snexuz@gmail.com)｜
+[Data Analyst Training Program @ DSP](http://dsp.im/events/a1-basic-data-analysis-course/)
+
+******************
+# Before we start...Code Demo 1
+### Settings
+
+```{r}
+# Settings
+library(ggplot2); library(reshape2); library(psych); library(dplyr)
+
+# Get Working Directory
+getwd()
+
+# Windows
+# setwd("C:/Users/ABACUS/Desktop/Dropbox/~OnGoing/20150131 A1")
+# MAC
+setwd("~Rafe/Dropbox/~OnGoing/20150131 A1")
+
+# List files
+# list.files()
+
+# Read
+# Windows
+# bike <- read.csv(file="ubike-big5.csv", header = TRUE)
+
+# MAC
+bike <- read.csv(file="ubike-utf8.csv", header = TRUE)
+
+bikeori <- bike
+bike <- bikeori
+
+```
+### Tips
+HELP
+
+* help()　是很棒的學習資源
+* ? 　　　一個問號讓我們更謙卑
+* ??　　　兩個問號讓我們探索世界
+* apropos()　指令部分關鍵字搜尋
+
+<br>
+
+MORE TIPS
+
+- ``#`` 筆記法
+- [Run current line/selection](https://support.rstudio.com/hc/en-us/articles/200711853-Keyboard-Shortcuts)
+    - Ctrl+Enter
+    - Command+Enter
+- [R Reference card](http://cran.r-project.org/doc/contrib/Short-refcard.pdf)
+- [R Style guide](http://adv-r.had.co.nz/Style.html)
+
+******************
+# Peak at data
+### Dataset
+```{r}
+# adjust console output width
+options(width=100)
+
+# Dimensions
+dim(bike)
+names(bike)
+
+# Glance
+head(bike)
+tail(bike, 10)
+tail(bike, 5, 10)
+
+head(bike$日期)
+
+#
+str(bike)
+
+```
+
+### Data wrangling: conversion data types
+```{r}
+# ETL Start
+# Time conversion
+class(bike$日期)
+bike$日期 <- as.Date(bike$日期)
+str(bike$日期)
+
+# Create new variable
+# ?strftime
+# bike$星期 <- strftime(bike[, "日期"], format="%u")
+# bike$已借 <- bike$總停車格 - bike$最大空位數
+# bike$無車機率 <- round(bike$最大空位數 / bike$總停車格, digit = 3)
+# bike$有車機率 <- 1 - bike$無車機率
+
+bike <- mutate(bike, 
+               星期 = strftime(日期, format="%u"),
+               已借 = 總停車格 - 最大空位數,
+               無車機率 = round(最大空位數 / 總停車格, digit = 3),
+               有車機率 = 1 - 無車機率               
+#                有車機率 = round(最大空位數 / 總停車格, digit = 3),
+#                無車機率 = 1 - 有車機率
+)
+
+head(bike) 
+
+# Change the order of levels of a factor
+# ?levels
+bike$時間 <- as.factor(bike$時間)
+levels(bike$時間)
+
+bike$星期 <- as.factor(bike$星期)
+levels(bike$星期)
+levels(bike$星期) <- c(7,6,5,4,3,2,1)
+str(bike$星期)
+
+levels(bike$星期) <- c(1,2,3,4,5,6,7)
+
+# Number of levels
+length(levels(bike$場站名稱))
+  
+```
+
+### YOUR 5-min exercises HERE
+- 資料型態轉換練習
+- 日期轉換：month, day, weekday
+- 還是有幾個地方很奇怪...
+```{r}
+# bike$場站代號
+
+
+# bike$日期 %Y, %m, %d
+
+
+```
+
+<br>
+
+### Data wrangling: deal with abnormal data
+```{r}
+# Reference for exercise
+# bike$場站代號
+# bike$場站代號 <- as.factor(bike$場站代號)
+# levels(bike$場站代號)
+
+# bike$日期 %Y, %m, %d
+# bike <- mutate(bike, 
+#                年 = strftime(日期, format="%Y"),
+#                月 = strftime(日期, format="%m"),
+#                日 = strftime(日期, format="%d")
+# )
+# head(bike)
+
+# Abnormals
+# Descriptive
+summary(bike)
+ 
+# Adding new factor levels 
+head(filter(bike, is.na(場站名稱) == T))
+distinct(select(filter(bike, is.na(場站名稱) == T), 場站名稱))
+
+# unique(filter(bike, is.na(場站名稱) == T)$場站代號)
+distinct(select(filter(bike, is.na(場站名稱) == T), 場站代號))
+
+# http://taipei.youbike.com.tw/cht/f11.php
+bike$場站名稱 <- as.character(bike$場站名稱)
+bike[which(is.na(bike$場站名稱) == T),"場站名稱"] <- "瑠公公園"
+bike$場站名稱 <- as.factor(bike$場站名稱)
+
+# Wire porps.
+summary(bike)
+filter(bike, 已借 < 0)
+filter(bike, 有車機率 > 1)
+bike <- filter(bike, 已借 >= 0)
+
+# Blank
+filter(bike, 場站名稱 == "")
+bike <- filter(bike, 場站名稱 != "")
+# Remove empty level
+levels(bike$場站區域)
+bike$場站區域 <- factor(bike$場站區域)
+
+table(factor(bike$場站區域))
+
+# Save & Load dataset
+# save(bike, file = "ana_bike2.RDA")
+# load("ana_bike.RDA")
+```
+
+************************************
+# Plots
+### First look!
+- R build-in plots
+    - plot(), hist(), bar(), pie(), line()..
+    - demo(graphics)
+
+<br>
+- qplot() - for quick plots 
+    - [Getting start with qplot](http://ggplot2.org/book/qplot.pdf)
+
+> qplot(x, y, data=, color=, shape=, size=, alpha=, <br>
+  　　　geom=, method=, formula=, facets=, <br>
+  　　　xlim=, ylim= xlab=, ylab=, main=, sub=)
+
+- ggplot() - for fine, granular control of everything
+    - data, aes()
+    - multi-layers
+    - geom_ (): Geometric objects that define the basic "shape" of the elements on the plot
+        - [ggplot online help topics](http://docs.ggplot2.org/current/)
+
+> ggplot(data = , aes( x = , y = ), fill = , colour = ) + <br>
+  　　　　geom_() + <br>
+  　　　　theme_() + <br> 
+  　　　　coord_() + facet_() + stat_ () + ... <br>
+
+<br>
+
+```{r}
+library(ggplot2)
+
+# list all geom
+ls(pattern = '^geom_', env = as.environment('package:ggplot2'))
+
+ls(pattern = '^stat_', env = as.environment('package:ggplot2'))
+
+```
+
+************************************
+# Code Demo 2
+### Histogram
+- Distribution / Composion / Comparison / Relationship
+- Question: 有車？沒車？
+
+```{r}
+# EDA Start
+summary(bike)
+
+# Aggregated hourly data analysis
+# R build-in plot
+par(family = "STHeiti", mfrow = c(1,1)) # Mac 中文字型設定
+hist(bike$無車機率, breaks = seq(0,1,0.1))
+
+# qplot
+qplot(data = bike, 無車機率, geom = "auto", binwidth = .1)
+filter(bike, 無車機率 > 1)
+# qplot(data = bike, 無車機率, geom = "auto", binwidth = .1, xlim = c(0,1))
+
+# ggplot
+bike.1p <- ggplot(bike, aes(x = 無車機率)) + theme_gray(base_family="STHeiti")
+bike.1p + geom_histogram(binwidth = .1) 
+bike.1p + geom_histogram(binwidth = .1, aes(fill = ..count..)) 
+bike.1p + geom_histogram(binwidth = .1, aes(fill = ..count..)) + xlim(0,1) 
+bike.1p + geom_histogram(binwidth = .1, aes(fill = ..count..)) + xlim(0,1) + scale_y_reverse()
+
+# density
+bike.1p + geom_histogram(binwidth = .1, aes(fill = ..count..)) + xlim(0,1) + 
+  geom_density(aes(y=..count..))
+
+qplot(data = bike, 無車機率, geom = "density", binwidth = .1)
+
+# think!
+dim(filter(bike, 有車機率 > 0))[1] / dim(bike)[1]
+```
+
+### Boxplot
+- Distribution / Composion / Comparison / Relationship
+
+```{r}
+# R build-in plot
+boxplot(bike$有車機率)
+boxplot(bike$有車機率, horizontal = T)
+
+# ggplot
+bike.2p <- ggplot(bike, aes(x = 場站區域, y = 有車機率)) + theme_gray(base_family="STHeiti")
+bike.2p + geom_boxplot() + coord_flip()
+
+# Put Average on Boxplot
+means <- aggregate(有車機率 ~ 場站區域, bike, mean)
+means$有車機率 <- round(means$有車機率, digit=2)
+bike.2p + geom_boxplot() + coord_flip() + 
+  stat_summary(fun.y=mean, colour="darkred", geom="point", 
+               shape=18, size=3,show_guide = FALSE) + 
+  geom_text(data = means, aes(label = 有車機率, y = 有車機率 + 0.08))
+
+# 看各區分佈借車機率圖
+```
+- [What is Boxplot](http://en.wikipedia.org/wiki/Box_plot#mediaviewer/File:Boxplot_vs_PDF.svg) <br>
+- [Average on boxplot](http://stackoverflow.com/questions/19876505/boxplot-show-the-value-of-mean)
+
+### Barchart
+- Distribution / Composion / Comparison / Relationship
+- Histogram vs Barchart
+- 各區場站數？哪個站大？哪個站小？
+
+```{r}
+# Subset
+bike.sub <- filter(bike, 日期 == "2014-12-09" & 時間 == 15)
+bike.sub.s <- summarise(group_by(bike.sub, 場站區域), n_distinct(場站名稱), sum(總停車格), n_distinct(星期)) 
+names(bike.sub.s) <- c("場站區域", "場站數", "總停車格", "星期")
+bike.sub.s
+
+names(bike.sub.s) <- c("District", "Stations", "Numbers", "Weekday")
+
+# R build-in plot
+par(family="Microsoft JhengHei")
+barplot(bike.sub.s$Stations, 
+        names.arg = bike.sub.s$District)
+
+# reorder: why?
+bike.sub.s <- bike.sub.s[order(bike.sub.s$Stations, decreasing = T),]
+barplot(bike.sub.s$Stations, 
+        names.arg = bike.sub.s$District, las = 2, ylim = c(0,30))
+
+# ggplot
+bike.3p <- ggplot(data = bike.sub.s, aes(x = reorder(District, -Stations), y = Stations, 
+                              colour = District, fill = District)) 
+
+bike.3p + geom_bar(stat="identity", width=0.5) 
+
+bike.3p + geom_bar(stat="identity", width=0.5) +
+  theme_gray(base_family="Microsoft JhengHei") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+bike.3p + geom_bar(stat="identity", width=0.5) +
+  theme_gray(base_family="Microsoft JhengHei") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+
+# Polar chart
+bike.3p + geom_bar(stat="identity", width=0.5) +
+  theme_gray(base_family="Microsoft JhengHei") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_polar() 
+
+bike.3p + geom_bar(stat="identity", width=0.5) +
+  theme_gray(base_family="Microsoft JhengHei") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_polar(theta = "y") 
+```
+
+### Pie Chart
+- Distribution / Composion / Comparison / Relationship
+
+```{r}
+# PIE chart
+# group by column
+# 各區場站數佔比
+ggplot(data = bike.sub.s, aes(x = Weekday, y = Stations, 
+                              colour = District, fill = District, group = Weekday)) + 
+  geom_bar(stat="identity", width=1, position = "stack") + 
+  theme_gray(base_family="Microsoft JhengHei") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_polar(theta = "y") 
+```
+
+### Stacked Chart
+- Distribution / Composion / Comparison / Relationship
+- 某時段中(Subset I: 2014-12-09 15:00) 各區有車？沒車？
+- Pie chart vs. Stacked chart
+
+```{r}
+# position = "stack" / "dodge" ?
+# Subset II
+bike.sub.m <- melt(select(bike.sub, 場站區域, 場站名稱, 有車機率, 無車機率))
+filter(bike.sub.m, 場站區域 == "大安區")
+
+ggplot(filter(bike.sub.m, 場站區域 == "大安區"),
+       aes(x = 場站名稱, y = value, fill = variable, width =.5)) + 
+  geom_bar(stat="identity", position = "dodge", width = .5) +
+  theme_gray(base_family="Microsoft JhengHei") 
+
+# Stacked bar chart: 重要的放上面還是下面？
+ggplot(filter(bike.sub.m, 場站區域 == "大安區"),
+       aes(x = 場站名稱, y = value, fill = variable, width =.5)) + 
+  geom_bar(stat="identity", position = "stack", width = .5) +
+  theme_gray(base_family="Microsoft JhengHei") 
+
+
+```
+
+### YOUR 5-min exercises II HERE
+- "大安區" 內車位數？
+- Describe the charts
+
+```{r}
+# Your code here
+
+```
+
+### Scatter plot
+- Distribution / Composion / Comparison / Relationship
+- 總停車格數量與有車機率
+- 橫斷面分析(cross sectional analysis) vs 縱斷面分析(longitudinal analysis)
+
+```{r}
+# recall
+bike.sub <- filter(bike, 日期 == "2014-12-09" & 時間 == 15)
+
+bike.sub2 <- filter(bike, 星期 == 1 & 時間 == 15)
+summary(bike.sub2)
+
+bike.sub2.s <- summarise(group_by(bike.sub2, 場站區域, 場站名稱, 總停車格), mean(有車機率)) 
+# dcast(bike, 場站區域 + 場站名稱 + 總停車格~ ., fun.aggregate = mean, value = "有車機率")
+names(bike.sub2.s)[4] <- "週一平均有車機率"
+
+# R build-in X-Y plot
+# ?plot()
+plot(bike.sub2.s$總停車格, bike.sub2.s$週一平均有車機率, pch = 20, cex = 1)
+plot(bike.sub2.s$總停車格, bike.sub2.s$週一平均有車機率, pch = 20, cex = 1, col = rainbow(20))
+
+# ggplot
+bike.4p <- ggplot(data = bike.sub2.s, aes(x = 總停車格, y = 週一平均有車機率,colour = 場站區域)) + 
+  theme_gray(base_family="Microsoft JhengHei") 
+bike.4p + geom_point()
+
+bike.4p + geom_point(aes(size = 總停車格, alpha = 1/20)) + scale_size_continuous(range = c(5,10))
+
+# Point with Text plot
+bike.4p + geom_point() +
+  geom_text(aes(label = 場站名稱, size = 總停車格), hjust = .5, vjust = -.8, family="Microsoft JhengHei") +
+  scale_size_continuous(range=c(3,8))
+
+```
+
+- [Plot](http://www.statmethods.net/advgraphs/parameters.html)<br>
+
+************************************
+************************************
+# Chart practices - craving for insights
+### Case I - Condition charts
+- 有車沒車跟星期
+```{r}
+bike.sub3.s <- summarise(group_by(filter(bike, 時間 == 15 & 場站區域 == "信義區"), 
+                                  星期, 場站區域, 場站名稱, 總停車格), mean(有車機率)) 
+names(bike.sub3.s)[5] <- "有車機率"
+
+# Define new variables
+summary(bike.sub3.s)
+bike.sub3.s <- mutate(bike.sub3.s, Big = (總停車格 > 60), Easy = (有車機率 > 0.5))
+
+# Grid by weekday
+ggplot(data = bike.sub3.s, aes(x = 總停車格, y = 有車機率, colour = 場站名稱)) + 
+  theme_gray(base_family="Microsoft JhengHei") +
+  geom_point(aes(size = 1)) +
+  geom_text(aes(label = 場站名稱, size = 1), hjust = .5, vjust = -.8, family="Microsoft JhengHei") +
+  facet_grid(.~星期)
+
+# Change the factor order
+str(bike.sub3.s$Easy)
+bike.sub3.s$Easy <- as.factor(bike.sub3.s$Easy)
+levels(bike.sub3.s$Easy)
+levels(bike.sub3.s$Easy) <- c("HARD", "EASY")  
+bike.sub3.s$Easy <- factor(bike.sub3.s$Easy, levels=rev(levels(bike.sub3.s$Easy)) )
+
+# Grid by easy and weekday 
+ggplot(data = bike.sub3.s, aes(x = 總停車格, y = 有車機率, colour = 場站名稱)) + 
+  theme_gray(base_family="Microsoft JhengHei") +
+  geom_point(aes(size = 1)) +
+  geom_text(aes(label = 場站名稱, size = 1), hjust = .5, vjust = -.8, family="Microsoft JhengHei") +
+  facet_grid(Easy~星期)
+
+```
+
+- [facet_grid: Lay out panels in a grid.](http://docs.ggplot2.org/0.9.3.1/facet_grid.html)<br>
+- [facet_wrap: Wrap a 1d ribbon of panels into 2d.](http://docs.ggplot2.org/0.9.3.1/facet_wrap.html)<br>
+
+### Case II - Heatmap
+```{r}
+bike.sub4.s <- summarise(group_by(filter(bike, 場站區域 == "信義區"), 日期, 時間, 場站區域, 場站名稱, 總停車格), 
+                         mean(有車機率)) 
+names(bike.sub4.s)[6] <- "有車機率"
+
+head(bike.sub4.s, 10)
+
+bike.sub4.s <- as.data.frame(bike.sub4.s)
+
+# ?geom_line
+ggplot(data = bike.sub4.s, aes(x = 時間, y = 有車機率, colour = 場站名稱, group = 場站名稱)) + 
+  theme_gray(base_family="Microsoft JhengHei") +
+  geom_line() 
+
+# ?geom_tile
+ggplot(data = bike.sub4.s, aes(x = 時間, y = 場站名稱)) + 
+  theme_gray(base_family="Microsoft JhengHei") +
+  geom_tile(aes(fill = 有車機率)) + 
+  scale_fill_gradient(low="white", high="steelblue") + 
+  scale_x_discrete(breaks=seq(0,23,1)) + 
+  theme(axis.text.x = element_text(size = 13, color="darkred")) # + geom_vline(xintercept = 9.5)
+  
+```
+
+- [geom_tile](http://docs.ggplot2.org/current/geom_tile.html) <br>
+
+### Go deeper
+```{r}
+bike.sub5.s <- summarise(
+  group_by(filter(bike, 場站區域 == "信義區"), 日期, 星期, 時間, 場站區域, 場站名稱, 總停車格), 
+  mean(有車機率)) 
+names(bike.sub5.s)[7] <- "有車機率"
+
+bike.sub5.s <- mutate(bike.sub5.s, Workday = (星期 %in% 1:5))
+
+head(bike.sub5.s)
+
+class(bike.sub5.s$Workday)
+
+# Change the factor order
+bike.sub5.s$Workday <- as.factor(bike.sub5.s$Workday)
+levels(bike.sub5.s$Workday) <- c("WEEKEND", "WORKDAY")  
+bike.sub5.s$Workday <- factor(bike.sub5.s$Workday, levels=rev(levels(bike.sub5.s$Workday)) )
+
+# Color matters
+# ?geom_tile
+ggplot(data = bike.sub5.s, aes(x = 時間, y = 場站名稱)) + 
+  theme_gray(base_family="Microsoft JhengHei") +
+  geom_tile(aes(fill = 有車機率)) + 
+  scale_fill_gradient(low="red", high="white") + 
+  scale_x_discrete(breaks=seq(0,23,1)) + 
+  theme(axis.text.x = element_text(size = 13, color="darkred")) + 
+  facet_grid(Workday~.) 
+
+# ?geom_tile
+ggplot(data = bike.sub5.s, aes(x = 時間, y = 場站名稱)) + 
+  theme_gray(base_family="Microsoft JhengHei") +
+  geom_tile(aes(fill = 有車機率)) + 
+  scale_fill_gradient(low="white", high="midnightblue") + 
+  scale_x_discrete(breaks=seq(0,23,1)) + 
+  theme(axis.text.x = element_text(size = 13, color="darkred")) + 
+  facet_grid(Workday~.) 
+
+```
+
+### YOUR 5-min exercises III HERE
+- 中正區
+- Describe the charts and patterns, Why why why~~~
+
+```{r}
+# Your code here
+
+```
+
+
+
+<br><br>
+
+> Gook Luck!
+
+Rafe C. H. Liu <br>
+[Contact me](mailto:snexuz@gmail.com)｜<a href="http://tw.linkedin.com/in/rafechliu" style="text-decoration:none;"><span style="font: 80% Arial,sans-serif; color:#0783B6;"><img src="https://static.licdn.com/scds/common/u/img/webpromo/btn_in_20x15.png" width="20" height="15" alt="View Liu Chia Hsin's LinkedIn profile" style="vertical-align:middle;" border="0">&nbsp;View Liu Chia Hsin's profile</span></a><br>
+[Data Analyst Training Program @ DSP](http://dsp.im/events/a1-basic-data-analysis-course/)
+

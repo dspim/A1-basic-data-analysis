@@ -1,0 +1,217 @@
+---
+title: "Ch3: Clean Data in R"
+author: "T.C. Hsieh"
+date: "Friday, January 30, 2015"
+output: html_document
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(comment="", message=FALSE, warning=FALSE)
+```
+
+## 3. Clean Data in R
+### 3.1 Reshape data
+- 資料的轉置 `t`
+```{r}
+call <- read.csv("data/OutgoingCalls.csv")
+call
+
+call.t <- t(call) # 資料轉置後，物件類別會變成 "matrix"
+colnames(call.t) <- as.character(call.t[1,]) # 用第一列 (first row) 來對欄位命名
+call.t <- call.t[-1,] # 移除第一列
+call.t <- as.data.frame(call.t) # 把 "matrix" 轉回 "data.frame"
+call.t
+```
+
+- Wide format to long format
+許多好用的分析、繪圖函數：`ggplot2`, `lm`, `glm`, `gam` 需要long-format。
+```{r}
+library(reshape2)
+library(ggplot2)
+df <- melt(call, id.vars = "Name", variable.name = "Week", value.name="OutCalls")
+df
+ggplot(df, aes(x=Week, y=OutCalls)) + geom_bar(stat="identity")
+ggplot(df, aes(x=Week, y=OutCalls, fill=Name)) + geom_bar(stat="identity", position="dodge")
+```
+
+- long to wide
+```{r}
+dcast(df, Name~Week, value.var="OutCalls") # call
+
+dcast(df, Week~Name, value.var="OutCalls") # call.t
+```
+
+
+### 3.2. 讀取 YouBike sample data
+- 請[到DSP資料中心](data.dsp.im)下載 [data](http://ckan.nispc.tw/dataset/youbike-small-data)
+- 將csv檔讀入R的環境中 
+```{r}
+ubike <- read.csv("data/ubike-sample-data-utf8.csv") # For Mac user
+# ubike <- read.csv("data/ubike-sample-data-big5.csv") # For Windows user
+head(ubike)
+```
+- Troubleshooting
+[欄位說明文件](http://www.dot.gov.taipei/public/mmo/dot/YouBike%E5%BE%AE%E7%AC%91%E5%96%AE%E8%BB%8A%E4%BB%8B%E6%8E%A5%E8%AA%AA%E6%98%8E%E6%96%87%E4%BB%B6.pdf)
+
+### 3.3. Arramge Observations (Rows)
+```{r}
+library(dplyr)
+arrange(ubike, tot) # 由小排到大
+
+arrange(ubike, desc(tot)) # 由大排到小
+```
+
+### 小挑戰
+試試用`arrange`對行政區域 (`sarea`) 排序會如何
+```{r echo=FALSE, eval=FALSE}
+arrange(ubike, sarea) # 由小排到大
+```
+
+
+### 3.4. Subset Observations (Rows)
+- 利用`filter`篩選資料
+```{r}
+ubike <- tbl_df(ubike) #  "tbl" class 是dplyr的物件，可以更方便展示資料
+dim(ubike)
+ubike <- distinct(ubike) # 移除重複的 rows
+dim(ubike)
+
+sample_n(ubike, 5, replace=TRUE) # 隨機抽5筆資料
+
+slice(ubike, c(1,11,21,31,41)) # 自訂抽取的資料列
+
+filter(ubike, sno==1) # 該場站大約每4-5分鐘記錄一筆資料
+```
+
+### 小挑戰
+- 利用`filter` 選擇信義區的所有場站資料
+- 篩選出經緯度介於：25.02387 < lat < 25.04815, 121.55575 < lng < 121.5838
+Hint: R語言對於區間的判斷可用 25.02387 < lat < 25.04815
+```{r echo=FALSE, eval=FALSE}
+filter(ubike, sarea=="信義區")
+filter(ubike, lat < 25.04815 & lat > 25.02387,  lng < 121.5838 & lng > 121.55575) 
+```
+
+
+
+### 3.5. Subset Variables (Columns)
+- 利用`select`選取欄位
+- Select columns by name
+```{r}
+# 選擇欄位
+ubike.sub <- select(ubike, mday, sno, sarea, sna, tot, sbi, bemp, nbcnt, act, lat, lng)
+# 也可以這樣做select
+# ubike.sub <- select(ubike, c(mday, sno, sarea, sna, tot, sbi, bemp, nbcnt, act, lat, lng))
+ubike.sub
+
+# 反向選取(移除))欄位
+select(ubike.sub, -mday, -sno)
+# 也可以這樣做
+# select(ubike.sub, -c(mday, sno))
+```
+
+- Select columns by helper function
+```{r eval=FALSE}
+# Select columns whose name matches a regular expression.
+select(iris, matches(".t."))
+
+# Select columns named x1, x2, x3, x4, x5.
+select(iris, num_range("x", 1:5))
+
+# Select columns whose names are in a group of names.
+select(iris, one_of(c("Species", "Genus")))
+
+# Select columns whose name starts with a character string. 
+select(iris, starts_with("Sepal"))
+```
+
+
+### 3.6. Make New Variables
+- Use `mutate` to compute and append one or more new columns
+```{r}
+ubike.sub <- mutate(ubike.sub, rate = sbi/tot) # rate = 目前車輛數/總空位數
+
+ubike.sub <- mutate(ubike.sub, hour=strftime(mday, format="%H")) # hour = 小時 (00-23)
+
+id <- c("南港區", "內湖區", "大安區","松山區","信義區","文山區", "中正區","萬華區","士林區","北投區","中山區","大同區")
+ubike.sub <- mutate(ubike.sub, city=ifelse(sarea%in%id, "台北市", "新北市")) # 標記場站屬於台北市/新北市
+ubike.sub
+```
+
+### 小挑戰 
+- 對`ubike.sub`物件創建一個名為`min`的變數，表示場站記錄時間的分鐘
+- Hint: 利用`strftime`取出`mday`變數的分鐘數, `%M`
+```{r eval=FALSE, echo=FALSE}
+mutate(ubike.sub, hour=strftime(mday, format="%M")) 
+```
+
+### 3.7. Group and Summarize Data
+- Use `summarise` to summarise data into single row of values or each column
+- 計算資料中場站目前空位數的平均數、標準差、最大、最小值
+```{r}
+summarise(ubike.sub, bemp.avg=mean(bemp), bemp.sd=sd(bemp), bemp.max=max(bemp), bemp.min=min(bemp))
+```
+
+- Use `group_by` to group data into rows with the same value of selected variable
+- Compute separate summary row for each group
+- 對行政區 (`sarea`) 做分組，計算該組別的目前空位數的平均數、標準差、最大、最小值
+```{r}
+summarise(group_by(ubike.sub, sarea), 
+          bemp.avg=mean(bemp), bemp.sd=sd(bemp), bemp.max=max(bemp), bemp.min=min(bemp))
+```
+
+### 小挑戰
+- 依`sno`做分組，計算該組別的目前空位數的平均數、標準差、最大、最小值
+- 依`hour`做分組，計算該組別的目前空位數的平均數、標準差、最大、最小值
+- 依`sno`與`hour`做分組，計算該組別的目前空位數的平均數、標準差、最大、最小值
+```{r eval=FALSE, echo=FALSE}
+summarise(group_by(ubike.sub, sno), 
+          bemp.avg=mean(bemp), bemp.sd=sd(bemp), bemp.max=max(bemp), bemp.min=min(bemp))
+
+summarise(group_by(ubike.sub, hour), 
+          bemp.avg=mean(bemp), bemp.sd=sd(bemp), bemp.max=max(bemp), bemp.min=min(bemp))
+
+summarise(group_by(ubike.sub, sno, hour), 
+          bemp.avg=mean(bemp), bemp.sd=sd(bemp), bemp.max=max(bemp), bemp.min=min(bemp))
+```
+
+### 3.8. Combine Data Sets
+- Columns and rows binding
+- `bind_cols(y, z)`, `bind_rows(y, z)`
+```{r}
+day <- data.frame(day=c("2015-12-08", "2015-12-08", "2015-12-08","2015-12-08"))
+tab <- summarise(group_by(ubike.sub, hour), 
+          bemp.avg=mean(bemp), bemp.sd=sd(bemp), bemp.max=max(bemp), bemp.min=min(bemp))
+bind_cols(day, tab)
+```
+
+- Mutating Joins
+```{r}
+df1 <- summarise(group_by(ubike.sub, hour), 
+          bemp.avg=mean(bemp), bemp.sd=sd(bemp), bemp.max=max(bemp), bemp.min=min(bemp))
+
+df2 <- summarise(group_by(ubike.sub, hour), 
+          sbi.avg=mean(sbi), sbi.sd=sd(sbi), sbi.max=max(sbi), sbi.min=min(sbi))
+
+left_join(df1, df2, by="hour")
+```
+
+### 小挑戰
+把`ubike.sub`依小時 (`hour`)、場站 (`sno`) 整理成以下資料表
+```{r echo=FALSE}
+tab <- summarise(group_by(ubike.sub, sno, hour), 
+          sarea=unique(sarea)[1],
+          sna=unique(sna)[1],
+          lat=unique(lat)[1],
+          lng=unique(lng)[1],
+          tot=unique(tot)[1],
+          bemp.avg=mean(bemp), bemp.sd=sd(bemp), bemp.max=max(bemp), bemp.min=min(bemp),
+          sbi.avg=mean(sbi), sbi.sd=sd(sbi), sbi.max=max(sbi), sbi.min=min(sbi),
+          nbcnt.max=max(nbcnt)
+          )
+head(data.frame(tab))
+```
+
+
+
+ 
