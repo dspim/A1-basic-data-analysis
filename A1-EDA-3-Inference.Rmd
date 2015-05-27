@@ -1,0 +1,240 @@
+---
+title: EDA(3) - Inference
+author: Rafe C. H. Liu
+date: Feb 2, 2015 @ DSP
+output:
+  html_document:
+    theme: "spacelab"
+    css: styles.css
+    fig_width: 10
+    fig_height: 7.5
+---
+[Contact me](mailto:snexuz@gmail.com)｜
+[Data Analyst Training Program @ DSP](http://dsp.im/events/a1-basic-data-analysis-course/)
+
+******************
+# Code Demo 3
+### Settings
+
+```{r}
+# Settings
+library(ggplot2); library(reshape2); library(psych); library(dplyr)
+
+# Windows
+# setwd("C:/Users/ABACUS/Desktop/Dropbox/~OnGoing/20150131 A1")
+# MAC
+setwd("~Rafe/Dropbox/~OnGoing/20150131 A1")
+
+# List files
+# list.files()
+
+# Read
+# Windows
+# bike <- read.csv(file="ubike-big5.csv", header = TRUE)
+
+# MAC
+# bike <- read.csv(file="ubike-utf8.csv", header = TRUE)
+
+load("ana_bike2.RDA")
+
+```
+### Tips
+
+- ``#`` 筆記法
+- 統計資源
+    - [國立台灣大學統計教學中心](http://www.statedu.ntu.edu.tw/lecture/index.asp)
+    - [中國醫藥大學 生物統計中心 生統e報](http://www2.cmu.edu.tw/~biostat/epaper/paper_040.html)
+    - [中國醫藥大學 雲端資料分析暨導引系統](http://www.r-web.com.tw/index.php)
+
+******************
+# Normal Distribution
+### Probability Distributions
+- “d” returns the height of the probability density function
+- “p”	returns the cumulative density function
+- “q”	returns the inverse cumulative density function (quantiles)
+- “r”	returns randomly generated numbers
+    - [Probability Plots](http://www.statmethods.net/advgraphs/probability.html)
+    - [Basic Probability Distributions](http://www.cyclismo.org/tutorial/R/probability.html)
+
+```{r}
+pnorm(1.96) # Probability
+qnorm(0.025) # alpha
+rnorm(10) # random numbers
+```
+
+### Funtion curve - Z
+```{r}
+x <- rnorm(100)
+qplot(x, geom = "density") + 
+  stat_function(fun = dnorm, colour = "red")
+
+ggplot(data.frame(x = c(-6, 6)), aes(x)) + 
+  stat_function(fun = dnorm) 
+```
+
+Example DEMO:
+
+> Children's IQ scores are normally distributed with a mean of 100 a nd a standard deviation of 15. 
+> What proportion of children are expected to have an IQ between 80 and 120?
+
+```{r}
+mean=100; sd=15
+lb=80; ub=120
+
+x <- seq(-4,4,length=100)*sd + mean
+hx <- dnorm(x,mean,sd)
+
+plot(x, hx, type="l", xlab="IQ Values", ylab="", main="Normal Distribution", axes=FALSE)
+
+i <- x >= lb & x <= ub
+lines(x, hx)
+polygon(c(lb,x[i],ub), c(0,hx[i],0), col="red") 
+
+# Probability - upper bound
+pnorm(ub, mean, sd)
+
+# Probability - lower bound
+pnorm(lb, mean, sd)
+
+area <- pnorm(ub, mean, sd) - pnorm(lb, mean, sd)
+result <- paste("P(",lb,"< IQ <",ub,") =",
+   signif(area, digits=3))
+mtext(result,3)
+axis(1, at=seq(40, 160, 20), pos=0)
+```
+
+### Z-value
+$$Z-score=\frac { X-\mu  }{ \sigma  } ~ N(0,1)$$
+
+- μ = 0 and σ = 1 平均數為 0，變異數為 1 之分配
+- Bell shape, symmetric, unimodal, and asymptotic
+- Mean = Median = Mode
+- 68 - 95 - 99.7 
+
+```{r}
+# Z-value
+x <- 1:10
+scale(x, scale = F)
+scale(x, scale = T)
+(x - mean(x)) / sd(x)
+
+# 6 sigma
+options(digits=12)
+pnorm(6)*100  # 6sigma
+pnorm(4.5)*100  # UCL
+
+# sd_X = ? 
+# How to buy the manufacturing equipment?
+X = 103; mean_X = 100; sd_X = 0.5
+(X-mean_X)/sd_X
+
+# How to set the control alarming system?
+# YOUR CODE HERE
+
+
+
+# Confidence Interval
+CI <- function(a, alpha){
+    if (length(a)>30){
+      right <- mean(a) + pnorm(1-alpha/2) * sd(a) / sqrt(length(a))
+      left <- mean(a) - pnorm(1-alpha/2) * sd(a) / sqrt(length(a))
+    }else{
+      right <- mean(a) + pt(1-alpha/2, df=length(a)-1) * sd(a) / sqrt(length(a))
+      left <- mean(a) - pt(1-alpha/2, df=length(a)-1) * sd(a) / sqrt(length(a))  
+    }
+    print(left); print(right)
+}
+
+CI(1:10, 0.05)
+```
+
+### Hypothesis
+- if p < alpha, reject H0 (p很小，拒絕)
+- n > 30, Z-score test: $$Z-score=\frac { X-\mu  }{ \sigma  } ~ N(0,1)$$
+    - [Statistical Analysis and A/B Testing](http://20bits.com/article/statistical-analysis-and-ab-testing) 
+- n < 30, t-test: $$t=\frac { \bar { X } -\mu  }{ \frac { S }{ \sqrt { n }  }  }$$
+    - Two-sample t-test & Paired t-test
+    - [t-test](http://www.cookbook-r.com/Statistical_analysis/t-test/)
+    - [Paired t-test](http://www.r-bloggers.com/paired-students-t-test/)    
+- [Statistics formula sheet](http://personal.maths.surrey.ac.uk/st/K.Young/form_sheet.pdf)
+
+
+```{r}
+bike.sub5.s <- summarise(
+  group_by(filter(bike, 場站區域 == "信義區"), 日期, 星期, 時間, 場站區域, 場站名稱, 總停車格), 
+  mean(有車機率)) 
+names(bike.sub5.s)[7] <- "有車機率"
+
+bike.sub5.s <- mutate(bike.sub5.s, Workday = (星期 %in% 1:5))
+
+head(bike.sub5.s)
+
+# Look at data again
+# Questions?
+filter(bike.sub5.s, 有車機率 == 0) %>% dim()
+
+# Change the factor order
+bike.sub5.s$Workday <- as.factor(bike.sub5.s$Workday)
+levels(bike.sub5.s$Workday) <- c("WEEKEND", "WORKDAY")  
+bike.sub5.s$Workday <- factor(bike.sub5.s$Workday, levels=rev(levels(bike.sub5.s$Workday)) )
+
+# ?geom_tile
+ggplot(data = bike.sub5.s, aes(x = 時間, y = 場站名稱)) + 
+  theme_gray(base_family="Microsoft JhengHei") +
+  geom_tile(aes(fill = 有車機率)) + 
+  scale_fill_gradient(low="white", high="midnightblue") + 
+  scale_x_discrete(breaks=seq(0,23,1)) + 
+  theme(axis.text.x = element_text(size = 13, color="darkred")) + 
+  facet_grid(Workday~.) +
+  geom_vline(xintercept = 9.5) + geom_vline(xintercept = 18.5) +
+  geom_hline(yintercept = 11) 
+
+# Aggregate by Week Number
+bike.sub5.s <- as.data.frame(bike.sub5.s)
+bike.sub6 <- mutate(bike.sub5.s, WeekNum = strftime(日期, format = "%U"))
+
+bike.sub6$Workday <- as.factor(bike.sub6$Workday)
+levels(bike.sub6$Workday) <- c("WEEKEND", "WORKDAY")  
+bike.sub6$Workday <- factor(bike.sub6$Workday, levels=rev(levels(bike.sub6$Workday)) )
+
+summarise(group_by(bike.sub6, Workday), mean(有車機率), sd(有車機率))
+
+# dcast(bike.sub6, 場站名稱 + Workday + WeekNum~., fun.aggregate = mean, value.var = "有車機率" )
+bike.sub6.s <- summarise(group_by(bike.sub6, 場站名稱, Workday, WeekNum), mean(有車機率))
+names(bike.sub6.s)[4] <- "有車機率"
+
+# group A and group B
+dat1 <- filter(bike.sub6.s, Workday == "WEEKEND")$有車機率
+dat2 <- filter(bike.sub6.s, Workday == "WORKDAY")$有車機率
+
+# Hypothesis test I: H0: 信義區週末有車機率平均 = 台北市有車平均
+# Z-value
+a <- t.test(dat1, mu = mean(bike.sub6.s$有車機率))
+a 
+
+# Interpretation: 
+# the hypothesis is significant tested at alpha = 0.05 level, 
+# reject H0, 信義區週末有車機率平均 = 台北市有車平均
+a$p.value # alpha = 0.05
+
+# Hypothesis test II: H0: 信義區週末有車機率平均 = 信義區工作日有車機率平均
+b <- t.test(dat1, dat2)
+b
+
+# Interpretation: 
+# the hypothesis is significant tested at alpha = 0.10 level, 
+# fail to reject H0, 信義區週末有車機率平均 != 信義區工作日有車機率平均
+b$p.value
+```
+
+- [What statistical analysis should I use?](http://www.ats.ucla.edu/stat/mult_pkg/whatstat/)
+
+<br><br>
+
+> Gook Luck!
+
+Rafe C. H. Liu <br>
+[Contact me](mailto:snexuz@gmail.com)｜<a href="http://tw.linkedin.com/in/rafechliu" style="text-decoration:none;"><span style="font: 80% Arial,sans-serif; color:#0783B6;"><img src="https://static.licdn.com/scds/common/u/img/webpromo/btn_in_20x15.png" width="20" height="15" alt="View Liu Chia Hsin's LinkedIn profile" style="vertical-align:middle;" border="0">&nbsp;View Liu Chia Hsin's profile</span></a><br>
+[Data Analyst Training Program @ DSP](http://dsp.im/events/a1-basic-data-analysis-course/)
+
+

@@ -1,0 +1,216 @@
+---
+title: "Ch2: Read Data in R"
+author: "Johnson Hsieh"
+date: "2015-01-31"
+output: html_document
+---
+```{r include=FALSE}
+knitr::opts_chunk$set(comment="", message=FALSE, warning=FALSE)
+```
+
+## 2. Read Data in R
+### 2.1. 從R console中輸入資料：
+- 利用 `readline` 輸入一行字串 (`"character"`)
+```{r eval=FALSE}
+readline()
+"I am a R user!"
+```
+- 利用 `scan` 輸入一組數值型態的向量 (`"numeric"`)
+- `scan()` 只能接受數值資料
+- 按一次enter鍵可以輸入下一筆數字，連按兩次enter將結束輸入。
+```{r eval=FALSE}
+scan()
+1
+2
+　
+```
+
+### 2.2. 設定R環境的工作目錄 (Working directory)
+- 利用 `getwd` 來查詢目前的工作目錄
+```{r}
+getwd()
+```
+- RStudio IDE的使用者可以發現工作目錄會顯示在Console介面的上方
+- 工作目錄的設定與讀取電腦上檔案的相對位置有關，適當的調整有助於工作流程的順暢
+- 想要更改工作目錄可以用 `setwd(dir)` 這個指令
+- 參數`dir`表示想要指向的工作目錄
+```{r eval=FALSE}
+setwd("c:/Users/Johnson/Dropbox/DSP/a1-basic-data-analysis/")
+getwd()
+```
+
+
+### 2.3. 將vector輸出至檔案
+- 先用`file`建立檔案連結(file connection)，再用`cat`函數將向量輸出至該檔案
+```{r}
+output <- file('output.txt')
+cat(1:100,sep='\t',file=output)
+close(output)
+```
+
+
+### 2.4 讀取/輸出 text lines 形式的來源
+- 當資料屬於**非表格形式**或**非結構化**時，可使用`readLines`讀取檔案
+- 利用 `writeLines` 將對應的結果輸出
+```{r}
+output <- file('output.txt')
+writeLines(as.character(1:12),con=output)
+```
+```{r}
+input <- readLines(output)
+print(input)
+```
+
+### 2.5 讀取/輸出 表格形式的資料
+- 利用`read.table`讀檔，利用`write.table`輸出檔案
+```{r}
+# a typical table format data
+head(iris)
+# write to a file
+write.table(iris, file='iris.csv',sep=',')
+# or, more concisely:
+write.csv(iris, file='iris.csv')
+```
+
+```{r eval = FALSE}
+data <- read.table(file='iris.csv',header = TRUE, sep=',')
+# or, more concisely:
+data <- read.csv(file='iris.csv')
+# if you don't want to type in the path
+data <- read.table(file=file.choose(),sep=',')
+```
+- help('read.table') for more information
+
+### 小挑戰：試著讀取 YouBike sample data
+- 請[到DSP資料中心](data.dsp.im)下載 [data](http://ckan.nispc.tw/dataset/youbike-small-data)
+- 將csv檔讀入R的環境中 
+
+Hint: 
+- 注意工作目錄的設定
+- windows user 建議讀取_ubike-sample-data-big5.csv_，Mac/Linux user 建議讀取_ubike-sample-data-utf8.csv_
+
+```{r}
+dat1 <- read.csv("data/ubike-sample-data-utf8.csv") # For Mac user
+# dat1 <- read.csv("data/ubike-sample-data-big5.csv")
+head(dat1)
+```
+
+- Troubleshooting
+如果你想在 windows 環境下讀取含有中文字以utf8編碼的檔案，有兩種建議做法
+```{r eval=FALSE}
+# Solution A
+dat1 <- read.csv("data/ubike-sample-data-utf8.csv", fileEncoding="utf8")
+
+# Solution B
+f <- file("data/ubike-sample-data-utf8.csv", encoding="utf8" )
+dat1 <- read.csv(f)
+```
+
+
+### 2.6. 讀取檔案較大的csv
+- Less memory will be used if `colClasses` is specified as one of the six atomic vector classes. Or simply use `stringsAsFactors=FALSE`.
+- Using `nrows`, even as a mild over-estimate, will help memory usage.
+- Using `comment.char = ""` will be appreciably faster than the read.table default.
+- `read.table` is not the right tool for reading large matrices. Use `scan` instead for matrices.
+
+
+### 2.7. 讀取其他檔案格式
+- 讀取Excel檔，R中有若干套件支援xlsx的讀取
+- 但是最穩定的辦法還是轉成csv
+```{r eval=FALSE}
+library(xlsx)
+file <- system.file("tests", "test_import.xlsx", package = "xlsx")
+res <- read.xlsx(file, sheetIndex =1)  # read first sheet
+
+library(gdata)
+read.xls("excelfile.xls")
+```
+
+- Troubleshooting
+載入套件 (`library(package_name)`) 之前，需要先安裝套件 (`install.packages("package_name")`)
+```{r eval=FALSE}
+install.packages(c("xlsx", "gdata")) # 可以一次安裝多個套件
+library(xlsx) # 但是一次只能載入一個套件
+library(gdata)
+```
+
+
+- 其他統計軟體資料表的讀取可以用`foreign`套件
+```{r eval=FALSE}
+library(foreign)
+stata.data <- read.dta("statafile.dta")
+spss.data <- read.spss("spssfile.sav")
+sas.data <- read.xport("sasfile.xpt")
+```
+
+### 2.8 從資料庫中取得資料
+R可以透過載入套件的方式跟多種資料庫進行連結
+- `DBI` 套件可以和以下 database management systems (DBMSs) 進行連結
+    * SQLite, MySQL, MariaDM, PostgreSQL, Oracle
+- `RODBC` 套件可以和ODBC database進行連結
+    * SQL Server, Access databases, Excel 2000
+```{r eval=FALSE}
+library(RSQLite)
+db  <-	dbConnect(dbDriver("SQLite"),	"data.db")	
+dbListTables(db)	
+df	<-	dbReadTable(db,	"tablename")	
+str(df)	
+head(df)
+```
+
+### 2.9 從網路上取得表格型態的資料
+- 利用`XML`套件中的`readHTMLTable`函數
+```{r}
+library(XML)
+url <- "http://en.wikipedia.org/wiki/FIFA_World_Cup"
+tab <- readHTMLTable(url, stringsAsFactors=FALSE)
+names(tab)
+tab[[7]]
+```
+
+- 透過API讀取JSON格式的檔案，在R中有三種套件可以使用：`RJSONIO`, `jsonlite`, `rjson`
+- 結果將以list物件呈現
+```{r, cache=TRUE}
+library(jsonlite)
+url <- "http://opendata.dot.taipei.gov.tw/opendata/gwjs_cityhall.json"
+ubike <- fromJSON(url)
+class(ubike)
+names(ubike)
+head(ubike$retVal)
+```
+
+### 小挑戰：[The World's Highest-Paid Athletes 2014](http://www.forbes.com/athletes/)
+1. 請將[Wiki](http://en.wikipedia.org/wiki/Forbes'_list_of_world's_highest-paid_athletes)中的表格內容擷取到R的環境中
+2. 計算百大運動員之運動項目(Sport)的次數分配表
+3. 計算百大運動員之總收入(Total)的平均值
+
+Hint:    
+
+- 利用`XML`中的套件`readHTMLTable`讀取wikipedia上的表格
+- 將欄位Sport擷取出來，再套用`table`函數
+- 將欄位Total擷取出來，利用`gsub("[$, million]", "", x)`與 `as.numeric`把文字轉數字，再套用`mean`函數  
+
+
+### 2.10. 綜合演練：[台北市校園數位氣象網](http://weather.tp.edu.tw/school/school.html)
+- [(API)](http://weather.tp.edu.tw/Ajax/jsonp/allnews.ashx?callback=WeatherTime&by=hour&start=1422115200000), JSON format.
+- 檔案不能直接利用`formJSON`讀取，需要做一點hack
+
+```{r}
+library(jsonlite)
+# 設定 api 對應的參數
+current_time  <-  as.POSIXct("2015-01-25  00:00")	
+stamp	<-	paste(unclass(current_time)[1],"000",	sep="")
+url0	<-	"http://weather.tp.edu.tw/Ajax/jsonp/allnews.ashx?callback=WeatherTime&by=hour&start="	
+url	<-	paste(url0,	stamp, sep="")	
+url
+
+# 利用readLines讀取網路上的資料
+dump <- readLines(url, warn=F) # utf8 編碼
+
+# 利用iconv轉換文字編碼 (windows user only)
+dump	<-	iconv(dump,	from="utf8") 
+
+# 移除資料開頭跟結尾的部分，再用jsonlite::fromJSON函數讀檔
+dat	<-	fromJSON(substr(dump,	13,	nchar(dump)-2))$result
+head(dat)
+```
